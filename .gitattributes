@@ -1,0 +1,2 @@
+src/main/resources/uploadFiles/voice/ffmpeg.exe filter=lfs diff=lfs merge=lfs -text
+src/main/resources/models/** filter=lfs diff=lfs merge=lfs -text
