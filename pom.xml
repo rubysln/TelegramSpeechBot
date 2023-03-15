@@ -36,6 +36,16 @@
 			<artifactId>telegrambots</artifactId>
 			<version>6.1.0</version>
 		</dependency>
+		<dependency>
+			<groupId>com.alphacephei</groupId>
+			<artifactId>vosk</artifactId>
+			<version>0.3.45</version>
+		</dependency>
+		<dependency>
+			<groupId>edu.cmu.sphinx</groupId>
+			<artifactId>sphinx4-core</artifactId>
+			<version>5prealpha-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -1,21 +1,29 @@
-package usr.ruby.TelegramSpeechBot.Service;
+package usr.ruby.TelegramSpeechBot.service;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Document;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.Voice;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.vosk.Model;
+import org.vosk.Recognizer;
 import usr.ruby.TelegramSpeechBot.component.BotCommands;
 import usr.ruby.TelegramSpeechBot.component.Buttons;
 import usr.ruby.TelegramSpeechBot.config.BotConfig;
@@ -24,7 +32,9 @@ import usr.ruby.TelegramSpeechBot.config.BotConfig;
 public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 	private final BotConfig config;
 
-	public TelegramBot(BotConfig config) {
+	private final Model model = new Model("src/main/resources/models/ru/vosk-model-small-ru-0.22");
+	private final String FFMPEG_FILE_DIR = "C:\\Java\\TelegramSpeechBot\\src\\main\\resources\\uploadFiles\\voice\\ffmpeg.exe";
+	public TelegramBot(BotConfig config) throws IOException {
 		this.config = config;
 	}
 
@@ -68,8 +78,10 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 			System.out.println("https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + voice.getFileId());
 
 			try {
-				uploadFiles(voice.getFileId());
-			} catch (IOException e) {
+				uploadFiles(voice.getFileId(), chatId);
+			} catch (IOException | InterruptedException e) {
+				throw new RuntimeException(e);
+			} catch (UnsupportedAudioFileException e) {
 				throw new RuntimeException(e);
 			}
 		}
@@ -108,7 +120,8 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 		execute(message);
 	}
 
-	private void uploadFiles(String fileId) throws IOException {
+	private void uploadFiles(String fileId, long chatId)
+			throws IOException, UnsupportedAudioFileException, InterruptedException {
 		URL url = new URL("https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + fileId);
 
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()));
@@ -127,12 +140,54 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 		bufferedReader.close();
 		inputStream.close();
 
-		//recodeFile(localFile);
+		recodeFile(localFile, chatId);
 	}
 
-	private void recodeFile(File file){
-		//...
+	private void recodeFile(File file, long chatId)
+			throws IOException, UnsupportedAudioFileException, InterruptedException {
+		String outputFilePath = file.getAbsolutePath() + ".wav";
+		ProcessBuilder processBuilder = new ProcessBuilder(FFMPEG_FILE_DIR, "-i", file.getAbsolutePath(), outputFilePath);
+		Process process = processBuilder.start();
+		process.waitFor();
 
+		File outputFile = new File(outputFilePath);
+
+		AudioFileFormat audioFileFormat = AudioSystem.getAudioFileFormat(outputFile);
+		AudioFormat audioFormat = audioFileFormat.getFormat();
+		Float sampleRate = audioFormat.getSampleRate();
+
+
+		try (InputStream ais = AudioSystem.getAudioInputStream(new BufferedInputStream(new FileInputStream(outputFile)))){
+			Recognizer recognizer = new Recognizer(model, sampleRate);
+
+			int nbytes;
+			byte[] b = new byte[4096];
+			while ((nbytes = ais.read(b)) >= 0) {
+				if (recognizer.acceptWaveForm(b, nbytes)) {
+					System.out.println(recognizer.getResult());
+				} else {
+					System.out.println(recognizer.getPartialResult());
+				}
+			}
+			String recognizeResult = recognizer.getFinalResult();
+			Charset utf8 = StandardCharsets.UTF_8;
+			recognizeResult = new String(recognizeResult.getBytes("Windows-1251"), utf8);
+			System.out.println(recognizeResult);
+
+			JSONObject jsonResult = new JSONObject(recognizeResult);
+			String result = jsonResult.getString("text");
+
+			if(result.length() > 0){
+				sendMessage(chatId, result);
+			}
+			else {
+				sendMessage(chatId, "Вы отправили пустое голосовое сообщение либо оно не обработалось!");
+			}
+	} catch (TelegramApiException e) {
+			throw new RuntimeException(e);
+		}
 		file.delete();
+		outputFile.delete();
 	}
 }
+
