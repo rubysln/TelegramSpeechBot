@@ -1,5 +1,6 @@
 package usr.ruby.TelegramSpeechBot.config;
 
+import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
@@ -17,7 +18,7 @@ public class BotInitializer {
 
 	@EventListener({ContextRefreshedEvent.class})
 	public void init() throws TelegramApiException{
-		TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
+		val telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
 		telegramBotsApi.registerBot(bot);
 	}
 }

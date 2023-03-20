@@ -1,6 +1,7 @@
 package usr.ruby.TelegramSpeechBot.component;
 
 import java.util.List;
+import lombok.val;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
@@ -10,10 +11,10 @@ public class Buttons {
 	public static InlineKeyboardMarkup inlineMarkup() {
 		HELP_BUTTON.setCallbackData("/help");
 
-		List<InlineKeyboardButton> rowInline = List.of(HELP_BUTTON);
-		List<List<InlineKeyboardButton>> rowsInLine = List.of(rowInline);
+		val rowInline = List.of(HELP_BUTTON);
+		val rowsInLine = List.of(rowInline);
 
-		InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+		val markupInline = new InlineKeyboardMarkup();
 		markupInline.setKeyboard(rowsInLine);
 
 		return markupInline;

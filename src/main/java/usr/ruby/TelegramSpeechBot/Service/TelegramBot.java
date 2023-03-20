@@ -1,16 +1,11 @@
 package usr.ruby.TelegramSpeechBot.service;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -21,7 +16,6 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.Voice;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.vosk.Model;
 import org.vosk.Recognizer;
@@ -52,9 +46,9 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 	@Override
 	public void onUpdateReceived(Update update) {
 		if(update.hasMessage() && update.getMessage().hasText()){
-			String messageText = update.getMessage().getText();
-			long chatId = update.getMessage().getChatId();
-			String username = update.getMessage().getChat().getFirstName();
+			val messageText = update.getMessage().getText();
+			val chatId = update.getMessage().getChatId();
+			val username = update.getMessage().getChat().getFirstName();
 
 			try {
 				botAnswerUtils(messageText, chatId, username);
@@ -63,9 +57,9 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 			}
 		}
 		else if(update.hasCallbackQuery()){
-			String messageText = update.getCallbackQuery().getData();
-			long chatId = update.getCallbackQuery().getFrom().getId();
-			String username = update.getCallbackQuery().getFrom().getFirstName();
+			val messageText = update.getCallbackQuery().getData();
+			val chatId = update.getCallbackQuery().getFrom().getId();
+			val username = update.getCallbackQuery().getFrom().getFirstName();
 
 			try {
 				botAnswerUtils(messageText, chatId, username);
@@ -74,15 +68,13 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 			}
 		}
 		else if(update.getMessage().hasVoice()){
-			Voice voice = update.getMessage().getVoice();
-			long chatId = update.getMessage().getChatId();
+			val voice = update.getMessage().getVoice();
+			val chatId = update.getMessage().getChatId();
 			System.out.println("https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + voice.getFileId());
 
 			try {
 				uploadFiles(voice.getFileId(), chatId);
-			} catch (IOException | InterruptedException e) {
-				throw new RuntimeException(e);
-			} catch (UnsupportedAudioFileException e) {
+			} catch (IOException | InterruptedException | UnsupportedAudioFileException e) {
 				throw new RuntimeException(e);
 			}
 		}
@@ -101,19 +93,19 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 	}
 
 	private void startCommandReceived(long chatId, String userName) throws TelegramApiException {
-		String answer = "Привет! " + userName + "! Отправь мне голосовое сообщение!.";
+		val answer = "Привет! " + userName + "! Отправь мне голосовое сообщение!.";
 
 		sendMessage(chatId, answer);
 	}
 
 	private void helpCommandReceived(long chatId, String userName) throws TelegramApiException{
-		String answer = "Привет " + userName + "! Отправь мне голосовое сообщение!";
+		val answer = "Привет " + userName + "! Отправь мне голосовое сообщение!";
 
 		sendMessage(chatId, answer);
 	}
 
 	private void sendMessage(long chatId, String answer) throws TelegramApiException {
-		SendMessage message = new SendMessage();
+		val message = new SendMessage();
 		message.setChatId(chatId);
 		message.setText(answer);
 		message.setReplyMarkup(Buttons.inlineMarkup());
@@ -123,18 +115,18 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 
 	private void uploadFiles(String fileId, long chatId)
 			throws IOException, UnsupportedAudioFileException, InterruptedException {
-		URL url = new URL("https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + fileId);
+		val url = new URL("https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + fileId);
 
 		val bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()));
-		String getFileResponse = bufferedReader.readLine();
+		val getFileResponse = bufferedReader.readLine();
 
-		JSONObject jsonResult = new JSONObject(getFileResponse);
-		JSONObject path = jsonResult.getJSONObject("result");
-		String file = path.getString("file_path");
+		val jsonResult = new JSONObject(getFileResponse);
+		val path = jsonResult.getJSONObject("result");
+		val file = path.getString("file_path");
 		System.out.println(file);
 
-		File localFile = new File("src/main/resources/uploadFiles/" + file);
-		InputStream inputStream = new URL("https://api.telegram.org/file/bot" + getBotToken() + "/" + file).openStream();
+		val localFile = new File("src/main/resources/uploadFiles/" + file);
+		val inputStream = new URL("https://api.telegram.org/file/bot" + getBotToken() + "/" + file).openStream();
 
 		FileUtils.copyInputStreamToFile(inputStream, localFile);
 
@@ -146,49 +138,60 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 
 	private void recodeFile(File file, long chatId)
 			throws IOException, UnsupportedAudioFileException, InterruptedException {
-		String outputFilePath = file.getAbsolutePath() + ".wav";
+		val outputFilePath = file.getAbsolutePath() + ".mp3";
 		val processBuilder = new ProcessBuilder(FFMPEG_FILE_DIR.getAbsolutePath(), "-i", file.getAbsolutePath(), outputFilePath);
-		Process process = processBuilder.start();
+		val process = processBuilder.start();
 		process.waitFor();
 
-		File outputFile = new File(outputFilePath);
+		val outputFile = new File(outputFilePath);
+		System.out.println("Created converted file: " + outputFile.getName());
+		val inFileStream= AudioSystem.getAudioInputStream(outputFile);
+		val baseFormat = inFileStream.getFormat();
+		val decodedFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
+				baseFormat.getSampleRate(),
+				16,
+				baseFormat.getChannels(),
+				baseFormat.getChannels() * 2,
+				baseFormat.getSampleRate(),
+				false);
 
-		AudioFileFormat audioFileFormat = AudioSystem.getAudioFileFormat(outputFile);
-		AudioFormat audioFormat = audioFileFormat.getFormat();
-		Float sampleRate = audioFormat.getSampleRate();
 
+		try (val audioInputStream = AudioSystem.getAudioInputStream(decodedFormat, inFileStream)){
 
-		try (InputStream ais = AudioSystem.getAudioInputStream(new BufferedInputStream(new FileInputStream(outputFile)))){
-			Recognizer recognizer = new Recognizer(model, sampleRate);
+			val recognizer = new Recognizer(model, audioInputStream.getFormat().getSampleRate());
 
-			int nbytes;
-			byte[] b = new byte[4096];
-			while ((nbytes = ais.read(b)) >= 0) {
-				if (recognizer.acceptWaveForm(b, nbytes)) {
-					System.out.println(recognizer.getResult());
+			int inputWave;
+			val bytes = new byte[4096];
+			while ((inputWave = audioInputStream.read(bytes)) >= 0) {
+				if (recognizer.acceptWaveForm(bytes, inputWave)) {
+					recognizer.getResult();
 				} else {
-					System.out.println(recognizer.getPartialResult());
+					recognizer.getPartialResult();
 				}
 			}
-			String recognizeResult = recognizer.getFinalResult();
-			Charset utf8 = StandardCharsets.UTF_8;
+			var recognizeResult = recognizer.getFinalResult();
+			val utf8 = StandardCharsets.UTF_8;
 			recognizeResult = new String(recognizeResult.getBytes("Windows-1251"), utf8);
 			System.out.println(recognizeResult);
 
-			JSONObject jsonResult = new JSONObject(recognizeResult);
-			String result = jsonResult.getString("text");
+			val jsonObjectResult = new JSONObject(recognizeResult);
+			val stringResult = jsonObjectResult.getString("text");
 
-			if(result.length() > 0){
-				sendMessage(chatId, result);
+			if(stringResult.length() > 0){
+				sendMessage(chatId, stringResult);
 			}
 			else {
 				sendMessage(chatId, "Вы отправили пустое голосовое сообщение либо оно не обработалось!");
 			}
-	} catch (TelegramApiException e) {
-			throw new RuntimeException(e);
+	} catch (TelegramApiException exception) {
+			throw new RuntimeException(exception);
 		}
-		file.delete();
-		outputFile.delete();
+		if(file.delete()){
+			System.out.println("Input voice file deleted!");
+		};
+		if(outputFile.delete()){
+			System.out.println("Converted voice file deleted!");
+		};
 	}
 }
 
