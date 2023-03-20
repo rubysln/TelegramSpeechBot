@@ -14,6 +14,7 @@ import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
+import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 import org.springframework.stereotype.Component;
@@ -33,7 +34,7 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 	private final BotConfig config;
 
 	private final Model model = new Model("src/main/resources/models/ru/vosk-model-small-ru-0.22");
-	private final String FFMPEG_FILE_DIR = "C:\\Java\\TelegramSpeechBot\\src\\main\\resources\\uploadFiles\\voice\\ffmpeg.exe";
+	private final File FFMPEG_FILE_DIR = new File("src/main/resources/uploadFiles/voice/ffmpeg.exe");
 	public TelegramBot(BotConfig config) throws IOException {
 		this.config = config;
 	}
@@ -124,7 +125,7 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 			throws IOException, UnsupportedAudioFileException, InterruptedException {
 		URL url = new URL("https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + fileId);
 
-		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()));
+		val bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()));
 		String getFileResponse = bufferedReader.readLine();
 
 		JSONObject jsonResult = new JSONObject(getFileResponse);
@@ -146,7 +147,7 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
 	private void recodeFile(File file, long chatId)
 			throws IOException, UnsupportedAudioFileException, InterruptedException {
 		String outputFilePath = file.getAbsolutePath() + ".wav";
-		ProcessBuilder processBuilder = new ProcessBuilder(FFMPEG_FILE_DIR, "-i", file.getAbsolutePath(), outputFilePath);
+		val processBuilder = new ProcessBuilder(FFMPEG_FILE_DIR.getAbsolutePath(), "-i", file.getAbsolutePath(), outputFilePath);
 		Process process = processBuilder.start();
 		process.waitFor();
 
