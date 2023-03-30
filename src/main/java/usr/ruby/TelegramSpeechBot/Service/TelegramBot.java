@@ -1,6 +1,5 @@
 package usr.ruby.TelegramSpeechBot.service;
 
-import it.sauronsoftware.jave.EncoderException;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -11,13 +10,14 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import lombok.val;
+import org.apache.commons.codec.EncoderException;
 import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScope;import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.vosk.Model;
 import org.vosk.Recognizer;
 import usr.ruby.TelegramSpeechBot.component.BotCommands;
@@ -27,12 +27,19 @@ import usr.ruby.TelegramSpeechBot.config.BotConfig;
 @Component
 public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
   private final BotConfig config;
+  private long chatId;
 
   private final Model model = new Model("src/main/resources/models/ru/vosk-model-small-ru-0.22");
   private final File FFMPEG_FILE_DIR = new File("src/main/resources/uploadFiles/voice/ffmpeg.exe");
 
   public TelegramBot(BotConfig config) throws IOException {
     this.config = config;
+    try{
+      this.execute(new SetMyCommands(BOT_COMMAND_LIST, new BotCommandScopeDefault(), null));
+    } catch (TelegramApiException telegramApiException) {
+      throw new RuntimeException(telegramApiException);
+    }
+
   }
 
   @Override
@@ -49,32 +56,32 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
   public void onUpdateReceived(Update update) {
     if (update.hasMessage() && update.getMessage().hasText()) {
       val messageText = update.getMessage().getText();
-      val chatId = update.getMessage().getChatId();
+      this.chatId = update.getMessage().getChatId();
       val username = update.getMessage().getChat().getFirstName();
 
       try {
-        botAnswerUtils(messageText, chatId, username);
+        botAnswerUtils(messageText, username);
       } catch (TelegramApiException e) {
         throw new RuntimeException(e);
       }
     } else if (update.hasCallbackQuery()) {
       val messageText = update.getCallbackQuery().getData();
-      val chatId = update.getCallbackQuery().getFrom().getId();
+      this.chatId = update.getCallbackQuery().getFrom().getId();
       val username = update.getCallbackQuery().getFrom().getFirstName();
 
       try {
-        botAnswerUtils(messageText, chatId, username);
+        botAnswerUtils(messageText, username);
       } catch (TelegramApiException e) {
         throw new RuntimeException(e);
       }
     } else if (update.getMessage().hasVoice()) {
       val voice = update.getMessage().getVoice();
-      val chatId = update.getMessage().getChatId();
+      this.chatId = update.getMessage().getChatId();
       System.out.println(
           "https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + voice.getFileId());
 
       try {
-        uploadFiles(voice.getFileId(), chatId);
+        uploadFiles(voice.getFileId());
       } catch (IOException
           | InterruptedException
           | UnsupportedAudioFileException
@@ -84,42 +91,65 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
     }
   }
 
-  private void botAnswerUtils(String receivedMessage, long chatId, String userName)
+  private void botAnswerUtils(String receivedMessage, String userName)
       throws TelegramApiException {
     switch (receivedMessage) {
       case "/start":
-        startCommandReceived(chatId, userName);
+        startCommandReceived(userName);
         break;
       case "/help":
-        helpCommandReceived(chatId, userName);
+        helpCommandReceived();
+        break;
+      case "/about":
+        aboutCommandReceived();
         break;
       default:
-        sendMessage(chatId, "Sorry " + userName + "! This command was not recognized.");
+        sendMessage("Sorry " + userName + "! This command was not recognized.", (byte) 1);
     }
   }
 
-  private void startCommandReceived(long chatId, String userName) throws TelegramApiException {
-    val answer = "Привет! " + userName + "! Отправь мне голосовое сообщение!.";
+  private void aboutCommandReceived() throws TelegramApiException {
+    val answer = "Привет! Спасибо что пользуешься моим телеграмм ботом!";
 
-    sendMessage(chatId, answer);
+    sendMessage(answer, (byte) 2);
   }
 
-  private void helpCommandReceived(long chatId, String userName) throws TelegramApiException {
-    val answer = "Привет " + userName + "! Отправь мне голосовое сообщение!";
+  private void startCommandReceived(String userName) throws TelegramApiException {
+    val answer = "\uD83D\uDC4B" + " Привет, " + userName + "!\nОтправь мне голосовое сообщение!";
 
-    sendMessage(chatId, answer);
+    sendMessage(answer, (byte) 0);
   }
 
-  private void sendMessage(long chatId, String answer) throws TelegramApiException {
+  private void helpCommandReceived() throws TelegramApiException {
+    val answer =
+        """
+Данный бот был разработан для распознавания ваших голосовых сообщений!
+Команды:
+/about - Об авторе!
+""";
+
+    sendMessage(answer, (byte) 0);
+  }
+
+  private void sendMessage(String answer, byte whichMarkup) throws TelegramApiException {
     val message = new SendMessage();
     message.setChatId(chatId);
     message.setText(answer);
-    message.setReplyMarkup(Buttons.inlineMarkup());
+    switch (whichMarkup){
+      case 1:
+        message.setReplyMarkup(Buttons.helpInlineMarkup());
+        break;
+      case 2:
+        message.setReplyMarkup(Buttons.aboutInLineMarkUp());
+      default:
+        break;
+    }
 
     execute(message);
   }
 
-  private void uploadFiles(String fileId, long chatId)
+
+  private void uploadFiles(String fileId)
       throws IOException, UnsupportedAudioFileException, InterruptedException, EncoderException {
     val url =
         new URL("https://api.telegram.org/bot" + getBotToken() + "/getFile?file_id=" + fileId);
@@ -141,24 +171,36 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
     bufferedReader.close();
     inputStream.close();
 
-    recodeFile(localFile, chatId);
+    recodeFile(localFile);
   }
 
-  private void recodeFile(File file, long chatId)
-      throws IOException, UnsupportedAudioFileException, InterruptedException, EncoderException {
+  private void recodeFile(File file)
+      throws IOException, UnsupportedAudioFileException, InterruptedException {
     val outputFilePath = file.getAbsolutePath() + ".mp3";
-    try {
-      val processBuilder =
-          new ProcessBuilder("ffmpeg", "-i", file.getAbsolutePath(), outputFilePath);
-      val process = processBuilder.start();
-      process.waitFor();
-    } catch (IOException exception) {
-      val processBuilder =
-          new ProcessBuilder(
-              FFMPEG_FILE_DIR.getAbsolutePath(), "-i", file.getAbsolutePath(), outputFilePath);
-      val process = processBuilder.start();
-      process.waitFor();
+
+    ProcessBuilder processBuilder = new ProcessBuilder();
+    val osName = System.getProperty("os.name").toLowerCase();
+    val command =
+        new String[] {
+          FFMPEG_FILE_DIR.getAbsolutePath(),
+          "-i",
+          file.getAbsolutePath(),
+          file.getAbsolutePath() + ".mp3"
+        };
+
+    if (osName.contains("win")) {
+      processBuilder.command("cmd", "/c", command[0], command[1], command[2], command[3]);
+    } else if (osName.contains("mac")) {
+      processBuilder.command(
+          "open", "-a", "Terminal", command[0], command[1], command[2], command[3]);
+    } else if (osName.contains("linux")) {
+      processBuilder.command("ffmpeg", command[1], command[2], command[3]);
+    } else {
+      throw new UnsupportedOperationException("This operating system is not supported.");
     }
+
+    Process process = processBuilder.start();
+    process.waitFor();
 
     val outputFile = new File(outputFilePath);
     System.out.println("Created converted file: " + outputFile.getName());
@@ -193,12 +235,12 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
       System.out.println(recognizeResult);
 
       val jsonObjectResult = new JSONObject(recognizeResult);
-      val stringResult = jsonObjectResult.getString("text");
+      String stringResult = jsonObjectResult.getString("text");
 
       if (stringResult.length() > 0) {
-        sendMessage(chatId, stringResult);
+        sendMessage("\uD83D\uDD0A: " + stringResult, (byte) 0);
       } else {
-        sendMessage(chatId, "Вы отправили пустое голосовое сообщение либо оно не обработалось!");
+        sendMessage("Вы отправили пустое голосовое сообщение либо оно не обработалось!", (byte) 0);
       }
     } catch (TelegramApiException exception) {
       throw new RuntimeException(exception);
@@ -206,10 +248,9 @@ public class TelegramBot extends TelegramLongPollingBot implements BotCommands {
     if (file.delete()) {
       System.out.println("Input voice file deleted!");
     }
-    ;
+
     if (outputFile.delete()) {
       System.out.println("Converted voice file deleted!");
     }
-    ;
   }
 }
