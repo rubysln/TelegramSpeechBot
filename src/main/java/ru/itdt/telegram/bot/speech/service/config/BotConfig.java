@@ -1,4 +1,4 @@
-package usr.ruby.TelegramSpeechBot.config;
+package ru.itdt.telegram.bot.speech.service.config;
 
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;

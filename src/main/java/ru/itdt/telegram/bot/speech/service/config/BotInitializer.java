@@ -1,4 +1,4 @@
-package usr.ruby.TelegramSpeechBot.config;
+package ru.itdt.telegram.bot.speech.service.config;
 
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
-import usr.ruby.TelegramSpeechBot.service.TelegramBot;
+import ru.itdt.telegram.bot.speech.service.bot.TelegramBot;
 
 @Component
 public class BotInitializer {

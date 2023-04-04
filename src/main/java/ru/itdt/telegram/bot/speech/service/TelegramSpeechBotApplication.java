@@ -1,4 +1,4 @@
-package usr.ruby.TelegramSpeechBot;
+package ru.itdt.telegram.bot.speech.service;
 
 import java.io.IOException;
 import org.springframework.boot.SpringApplication;

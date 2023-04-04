@@ -1,4 +1,4 @@
-package usr.ruby.TelegramSpeechBot.component;
+package ru.itdt.telegram.bot.speech.service.component;
 
 import java.util.List;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;

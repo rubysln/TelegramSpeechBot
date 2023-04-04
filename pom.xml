@@ -8,8 +8,8 @@
 		<version>2.7.9</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>usr.ruby</groupId>
-	<artifactId>TelegramSpeechBot</artifactId>
+	<groupId>ru.itdt.telegram.bot.speech</groupId>
+	<artifactId>Service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>TelegramSpeechBot</name>
 	<description>Telegram bot speech-to-text</description>

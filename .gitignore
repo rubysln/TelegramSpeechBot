@@ -3,6 +3,10 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+mvnw
+mvnw.cmd
+.mvn/
+src/main/resources/models/ru/vosk-model-ru-0.42/
 
 ### STS ###
 .apt_generated
