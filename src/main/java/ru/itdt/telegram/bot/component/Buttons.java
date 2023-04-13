@@ -1,4 +1,4 @@
-package ru.itdt.telegram.bot.speech.service.component;
+package ru.itdt.telegram.bot.component;
 
 import java.util.List;
 import lombok.val;
@@ -24,7 +24,7 @@ public class Buttons {
     return markupInline;
   }
 
-  public static InlineKeyboardMarkup aboutInLineMarkUp(){
+  public static InlineKeyboardMarkup aboutInLineMarkUp() {
     GITHUB_BUTTON.setUrl("https://github.com/rubysln");
     VK_BUTTON.setUrl("https://vk.com/rubyrubyrubyrubyrubyruby");
     TG_BUTTON.setUrl("https://t.me/rubyrubyrubyrubyrubyrubyruby");
