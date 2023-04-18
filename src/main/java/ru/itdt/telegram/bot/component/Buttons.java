@@ -1,7 +1,6 @@
 package ru.itdt.telegram.bot.component;
 
 import java.util.List;
-import lombok.val;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
@@ -14,14 +13,7 @@ public class Buttons {
 
   public static InlineKeyboardMarkup helpInlineMarkup() {
     HELP_BUTTON.setCallbackData("/help");
-
-    val firstRowInline = List.of(HELP_BUTTON);
-    val rowsInLine = List.of(firstRowInline);
-
-    val markupInline = new InlineKeyboardMarkup();
-    markupInline.setKeyboard(rowsInLine);
-
-    return markupInline;
+    return InlineKeyboardMarkup.builder().keyboard(List.of(List.of(HELP_BUTTON))).build();
   }
 
   public static InlineKeyboardMarkup aboutInLineMarkUp() {
@@ -29,12 +21,8 @@ public class Buttons {
     VK_BUTTON.setUrl("https://vk.com/rubyrubyrubyrubyrubyruby");
     TG_BUTTON.setUrl("https://t.me/rubyrubyrubyrubyrubyrubyruby");
 
-    val firstRowInLine = List.of(GITHUB_BUTTON, VK_BUTTON, TG_BUTTON);
-    val rowsInLine = List.of(firstRowInLine);
-
-    val markupInLine = new InlineKeyboardMarkup();
-    markupInLine.setKeyboard(rowsInLine);
-
-    return markupInLine;
+    return InlineKeyboardMarkup.builder()
+        .keyboard(List.of(List.of(GITHUB_BUTTON, VK_BUTTON, TG_BUTTON)))
+        .build();
   }
 }

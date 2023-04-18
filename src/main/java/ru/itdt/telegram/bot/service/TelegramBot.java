@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import javax.sound.sampled.AudioFormat;
@@ -15,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
@@ -29,6 +30,7 @@ import ru.itdt.telegram.bot.component.Buttons;
 
 @Component
 @Slf4j
+@PropertySource("application.properties")
 public class TelegramBot extends TelegramLongPollingBot {
   private final List<BotCommand> BOT_COMMAND_LIST =
       List.of(
@@ -37,8 +39,13 @@ public class TelegramBot extends TelegramLongPollingBot {
           new BotCommand("/about", "Ссылки на разработчика."));
   private long chatId;
 
+  @Value("${bot.name}")
+  private String botName;
+
+  @Value("${bot.token}")
+  private String botToken;
+
   private final Model model = new Model("src/main/resources/models/ru/vosk-model-small-ru-0.22");
-  private final Charset UTF_8 = StandardCharsets.UTF_8;
 
   public TelegramBot() throws IOException {
     try {
@@ -50,45 +57,41 @@ public class TelegramBot extends TelegramLongPollingBot {
 
   @Override
   public String getBotUsername() {
-    return "TelegramSpeechBot";
+    return botName;
   }
 
   @Override
   public String getBotToken() {
-    return "6228458119:AAHoXxcc5Eb-oh9H32HOZDqeTv_O76eq3t4";
+    return botToken;
   }
 
   @Override
-  public void onUpdateReceived(Update update){
+  public void onUpdateReceived(Update update) {
+    try {
+      onUpdateReceivedImpl(update);
+    } catch (Exception exception) {
+      throw new RuntimeException(exception);
+    }
+  }
+
+  private void onUpdateReceivedImpl(Update update) throws TelegramApiException, UnsupportedAudioFileException, IOException, InterruptedException {
     if (update.hasMessage() && update.getMessage().hasText()) {
       val messageText = update.getMessage().getText();
       this.chatId = update.getMessage().getChatId();
       val username = update.getMessage().getChat().getFirstName();
 
-      try {
-        getBotAnswerUtils(messageText, username);
-      } catch (TelegramApiException exception) {
-        throw new RuntimeException(exception);
-      }
+      getBotAnswerUtils(messageText, username);
     } else if (update.hasCallbackQuery()) {
       val messageText = update.getCallbackQuery().getData();
       this.chatId = update.getCallbackQuery().getFrom().getId();
       val username = update.getCallbackQuery().getFrom().getFirstName();
 
-      try {
-        getBotAnswerUtils(messageText, username);
-      } catch (TelegramApiException exception) {
-        throw new RuntimeException(exception);
-      }
+      getBotAnswerUtils(messageText, username);
     } else if (update.getMessage().hasVoice()) {
       val voice = update.getMessage().getVoice();
       this.chatId = update.getMessage().getChatId();
 
-      try {
-        uploadFiles(voice.getFileId());
-      } catch (Exception exception) {
-        throw new RuntimeException(exception);
-      }
+      uploadFiles(voice.getFileId());
     }
   }
 
@@ -98,20 +101,20 @@ public class TelegramBot extends TelegramLongPollingBot {
       case "/start" -> startCommandReceived(userName);
       case "/help" -> helpCommandReceived();
       case "/about" -> aboutCommandReceived();
-      default -> sendMessage("Sorry " + userName + "! This command was not recognized.", (byte) 1);
+      default -> sendMessage("Sorry " + userName + "! This command was not recognized.", Markups.HELP);
     }
   }
 
   private void aboutCommandReceived() throws TelegramApiException {
     val answer = "Привет! Спасибо что пользуешься моим телеграмм ботом!";
 
-    sendMessage(answer, (byte) 2);
+    sendMessage(answer, Markups.ABOUT);
   }
 
   private void startCommandReceived(String userName) throws TelegramApiException {
     val answer = "\uD83D\uDC4B" + " Привет, " + userName + "!\nОтправь мне голосовое сообщение!";
 
-    sendMessage(answer, (byte) 0);
+    sendMessage(answer, Markups.EMPTY);
   }
 
   private void helpCommandReceived() throws TelegramApiException {
@@ -122,18 +125,18 @@ public class TelegramBot extends TelegramLongPollingBot {
 /about - Об авторе!
 """;
 
-    sendMessage(answer, (byte) 0);
+    sendMessage(answer, Markups.EMPTY);
   }
 
-  private void sendMessage(String answer, byte whichMarkup) throws TelegramApiException {
+  private void sendMessage(String answer, Markups switchMarkup) throws TelegramApiException {
     val message = new SendMessage();
     message.setChatId(chatId);
     message.setText(answer);
-    switch (whichMarkup) {
-      case 1:
+    switch (switchMarkup) {
+      case HELP:
         message.setReplyMarkup(Buttons.helpInlineMarkup());
         break;
-      case 2:
+      case ABOUT:
         message.setReplyMarkup(Buttons.aboutInLineMarkUp());
       default:
         break;
@@ -224,20 +227,27 @@ public class TelegramBot extends TelegramLongPollingBot {
           }
         }
         var recognizeResult = recognizer.getFinalResult();
-        recognizeResult = new String(recognizeResult.getBytes("Windows-1251"), UTF_8);
+        recognizeResult =
+            new String(recognizeResult.getBytes("Windows-1251"), StandardCharsets.UTF_8);
 
         val jsonObjectResult = new JSONObject(recognizeResult);
         String stringResult = jsonObjectResult.getString("text");
 
         if (stringResult.length() > 0) {
-          sendMessage("\uD83D\uDD0A: " + stringResult, (byte) 0);
+          sendMessage("\uD83D\uDD0A: " + stringResult, Markups.EMPTY);
         } else {
           sendMessage(
-              "Вы отправили пустое голосовое сообщение либо оно не обработалось!", (byte) 0);
+              "Вы отправили пустое голосовое сообщение либо оно не обработалось!", Markups.EMPTY);
         }
       }
     }
     file.delete();
     outputFile.delete();
   }
+}
+
+enum Markups{
+  HELP,
+  ABOUT,
+  EMPTY;
 }
