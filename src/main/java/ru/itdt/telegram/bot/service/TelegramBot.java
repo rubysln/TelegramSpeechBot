@@ -15,6 +15,7 @@ import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -30,29 +31,25 @@ import ru.itdt.telegram.bot.component.Buttons;
 
 @Component
 @Slf4j
-@PropertySource("application.properties")
+@PropertySource("classpath:telegram.properties")
 public class TelegramBot extends TelegramLongPollingBot {
+  private long chatId;
   private final List<BotCommand> BOT_COMMAND_LIST =
       List.of(
           new BotCommand("/start", "Старт бота."),
           new BotCommand("/help", "Помощь."),
           new BotCommand("/about", "Ссылки на разработчика."));
-  private long chatId;
 
   @Value("${bot.name}")
   private String botName;
 
   @Value("${bot.token}")
-  private String botToken;
+  private String botToken = "6228458119:AAH9U-ldgxrwZ8bUVselGLpRJzUpCgs6uAI";
 
   private final Model model = new Model("src/main/resources/models/ru/vosk-model-small-ru-0.22");
 
-  public TelegramBot() throws IOException {
-    try {
-      this.execute(new SetMyCommands(BOT_COMMAND_LIST, new BotCommandScopeDefault(), null));
-    } catch (TelegramApiException telegramApiException) {
-      throw new RuntimeException(telegramApiException);
-    }
+  public TelegramBot() throws IOException, TelegramApiException {
+    this.execute(new SetMyCommands(BOT_COMMAND_LIST, new BotCommandScopeDefault(), null));
   }
 
   @Override
@@ -74,7 +71,11 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
   }
 
-  private void onUpdateReceivedImpl(Update update) throws TelegramApiException, UnsupportedAudioFileException, IOException, InterruptedException {
+  private void onUpdateReceivedImpl(Update update)
+      throws TelegramApiException,
+          UnsupportedAudioFileException,
+          IOException,
+          InterruptedException {
     if (update.hasMessage() && update.getMessage().hasText()) {
       val messageText = update.getMessage().getText();
       this.chatId = update.getMessage().getChatId();
@@ -101,7 +102,8 @@ public class TelegramBot extends TelegramLongPollingBot {
       case "/start" -> startCommandReceived(userName);
       case "/help" -> helpCommandReceived();
       case "/about" -> aboutCommandReceived();
-      default -> sendMessage("Sorry " + userName + "! This command was not recognized.", Markups.HELP);
+      default -> sendMessage(
+          "Sorry " + userName + "! This command was not recognized.", Markups.HELP);
     }
   }
 
@@ -246,7 +248,7 @@ public class TelegramBot extends TelegramLongPollingBot {
   }
 }
 
-enum Markups{
+enum Markups {
   HELP,
   ABOUT,
   EMPTY;
